@@ -14,8 +14,8 @@ from tensorflow.keras.layers import BatchNormalization, Conv2D, MaxPooling2D, Dr
 
 
 
-train_path = 'data/train/'
-test_path = 'data/test/'
+train_path = 'data/train/' # Путь к тренировочным данным
+test_path = 'data/test/' # Путь к тестовым данным
 
 # Вывод данных тестового набора
 fig, axes = plt.subplots(1, 2, figsize=(25, 5)) # Создание пустого полотна 1 на 2
@@ -49,7 +49,7 @@ data_generator = ImageDataGenerator(
 train_generator = data_generator.flow_from_directory(
     train_path, # Пусть ко всей выборке
     target_size = (img_height, img_width), # Размеры изображений
-    batch_size = batch_size,
+    batch_size = batch_size, # размер пакетов данных
     shuffle = True, # Перемешка выборки
     class_mode = 'categorical', # Категориальный тип выборки. Рахбиение выборки по маркам авто
     subset = 'training' # Установка выборки как обучающая
@@ -58,7 +58,7 @@ train_generator = data_generator.flow_from_directory(
 validation_generator = data_generator.flow_from_directory(
     train_path, # Пусть ко всей выборке
     target_size = (img_height, img_width), # Размеры изображений
-    batch_size = batch_size,
+    batch_size = batch_size, # размер пакетов данных
     shuffle = True, # Перемешка выборки
     class_mode = 'categorical', # Категориальный тип выборки. Рахбиение выборки по маркам авто
     subset = 'validation' # Установка выборки как валидационная
@@ -69,6 +69,24 @@ validation_generator = data_generator.flow_from_directory(
 
 
 # Создание модели
+# BatchNormalization - метод, который позволяет повысить производительность и стабилизировать работу искусственных нейронных сетей.
+
+# Conv2D - cлой 2D свертки (например, пространственная свертка над изображениями). 
+#Этот слой создает ядро свертки, которое свертывается со входом слоя для получения тензора выходов. 
+#(Количество карт свертки, размер ядра свертки, заполнять срезанные пиксели, активационная функция relu)
+
+#MaxPooling2D - операция максимальной подвыборки(субдискретизации) для пространственных данных.
+#pool_size: целое число или кортеж из 2-х целых чисел, факторы, по которым следует уменьшать масштаб (вертикальный, горизонтальный).
+#(2, 2) уменьшит входное значение в обоих пространственных измерениях наполовину.
+
+#Dropout - dropout) — метод регуляризации искусственных нейронных сетей, предназначен для уменьшения переобучения сети
+#за счет предотвращения сложных коадаптаций отдельных нейронов на тренировочных данных во время обучения.
+
+#Flatten - возвращает копию массива сжатую до одного измерения.
+
+#Dense - реализует операцию: output = activation(dot(input, kernel) + bias), где активация — это функция активации по элементам, переданная в качестве аргумента
+#активации, кернел — это матрица весов, созданная слоем, а смещение — это вектор смещения, созданный слоем (применимо только в случае, если use_bias — True).
+
 model = Sequential()
 # Первый слой пакетной нормализации
 model.add(BatchNormalization(input_shape=(img_height, img_width, 3)))
@@ -159,19 +177,18 @@ model.summary()
 
 
 
-#Наглядная
+#Наглядная демонстрация классификации нейронной сети
+#Классы
 classes = ['tomatoes', 'apples']
-for n in range(len(classes)):
-  for i in os.listdir(test_path+classes[n]):
-    test_img_path = test_path+classes[n]+'/'+i
+for n in range(len(classes)): # При помощи цикла прохожусь по всем классам
+  for i in os.listdir(test_path+classes[n]): # Вложенным циклом прохожусь по всем картинкам текущего класса
+    test_img_path = test_path+classes[n]+'/'+i # Получение полного пути к изображению
     
-    with Image.open(test_img_path) as img:
-      img.load()
-    img = img.resize((img_height, img_width), 3)
-    img = np.array(img)[None]
-    plt.figure()
-    plt.title(f'Изображение из класса {classes[n]}\nСеть отнесла к классу {classes[np.argmax(model.predict(img,verbose = 0))]}')
-    img = img[0]
-    plt.imshow(np.squeeze(img))
-
-
+    with Image.open(test_img_path) as img: # Открытие изображения
+      img.load() # Загрузка изображения
+    img = img.resize((img_height, img_width), 3) # Изменение размеров изображения
+    img = np.array(img)[None] # Создание матрицы numpy из изображения с размерностью (1, 256, 256, 3)
+    plt.figure() # Создание фигуры
+    plt.title(f'Изображение из класса {classes[n]}\nСеть отнесла к классу {classes[np.argmax(model.predict(img,verbose = 0))]}') # Заголовок пигуры
+    img = img[0] # Распкаовка батча для получения матрицы изображения
+    plt.imshow(np.squeeze(img)) # Преобразование матрицы в изображение и отображение ее на экране
