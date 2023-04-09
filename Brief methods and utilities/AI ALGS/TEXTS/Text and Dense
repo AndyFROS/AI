@@ -1,0 +1,43 @@
+from tensorflow.keras.models import Sequential #Полносвязная модель
+from tensorflow.keras.layers import Dense, Dropout
+import matplotlib.pyplot as plt
+
+max_words_count = [] # Тут последовательность
+
+model = Sequential()
+# Первый полносвязный слой
+model.add(Dense(128, input_dim=max_words_count, activation='relu'))
+# Первый слой регуляризации Dropout
+model.add(Dropout(0.4))
+
+# Второй полносвязный слой
+model.add(Dense(256, activation='relu'))
+# Второй слой регуляризации Dropout
+model.add(Dropout(0.4))
+
+# Третий полносвязный слой
+model.add(Dense(128, activation='relu'))
+# Третий слой регуляризации Dropout
+model.add(Dropout(0.4))
+
+# Выходной полносвязный слой
+model.add(Dense(n_classes, activation='softmax'))
+
+# Компиляция модели с функцией потери categorical_crossentropy оптимизатором adam и метрикой accurasy
+model.compile(loss = 'categorical_crossentropy', optimizer = 'adam', metrics = ['accuracy'])
+
+# Обучение модели
+history = model.fit(X_train,
+                    y_train,
+                    epochs = 20,
+                    batch_size = 128,
+                    validation_data = (X_test, y_test),
+                    verbose = 1
+                   )
+
+# График отражающий точность обучения обучения
+plt.plot(history.history['accuracy'], label = 'Точность не тренировочном наборе') # Точность на тренеровочном наборе
+plt.plot(history.history['val_accuracy'], label = 'Точность не тестовом наборе') # Точность на тестовом наборе
+plt.xlabel('Количество эпох') # Наименование оси X
+plt.ylabel('Точность модели') # Наименование оси y
+plt.show() # Показать полотно

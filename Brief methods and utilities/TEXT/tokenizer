@@ -1,0 +1,71 @@
+import time
+from tensorflow.keras.preprocessing.text import Tokenizer #Методы для роботы с текстами и преобразования их в последовательности
+from tensorflow.keras.preprocessing.sequence import pad_sequences #Метод для работы с последовательностями
+
+
+train_text = [] # Тут должны быть текста для тренировки
+test_text = [] # Тут должны быть текста для тестирования
+
+class_name = ['О. Генри', 'Стругацкие', 'Булгаков', 'Саймак', 'Фрай', 'Брэдберри'] # Все классы
+n_classes = len(class_name) # Количество класов
+
+
+
+curr_time = time.time() # Засекаем текущее время
+max_words_count = 20000 # Определяем максимальное количество слов/индексов, учитываемое при обучении текстов
+
+# Использование встроенной в Keras функции Tokenizers для разбиения текста и превращения в матрицу числовых значений
+tokenizer = Tokenizer(
+    num_words = max_words_count, # Определяем максимальное количество слов/индексов, учитываемое при обучении текстов
+    filters = '!"#$%&()*+,-–—./…:;<=>?@[\\]^_`{|}~«»\t\n\xa0\ufeff', # Избавляемся от ненужных символов
+    lower = True, # Приведение всех слов к нижнему регистру
+    split = ' ', # Разделение слов по пробелу
+    oov_token = 'unknown', # Чтобы показать, где находится пропущенное слово
+    char_level = False # Не удалять однобуквенные слова
+)
+
+tokenizer.fit_on_texts(train_text) # Даем тексты в метод, который соберет словарь частотности
+items = list(tokenizer.word_index.items()) # Вытаскиваем индексы слов для просмотра
+print(f'Время обработки: {round(time.time() - curr_time)}')
+
+
+print(items[-10:]) # 50 Самый часто встречающихся слов
+print(f'Размер словаря: {len(items)}') # Длина словоря
+
+w_i = 'колобок' #input('Введите слово - ')
+print(f'Это слово имеет индекс - {tokenizer.word_index[w_i]}')
+
+# Преобразование текста в последовательность индексов согластно частотному словарю
+train_word_indexes = tokenizer.texts_to_sequences(train_text)
+test_word_indexes = tokenizer.texts_to_sequences(test_text)
+print('Взглянем на фрагменты обучающего текста')
+print(f'В виде оригинального текста: {train_text[1][:87]}')
+print(f'Он же в виде последовательности индексов" {train_word_indexes[1][:20]} \n')
+
+
+
+
+print("Статистика по обучающим текстам:")
+
+symbolsTrainText = 0 # Объявляем переменную для подсчета символов в обучающих текстах
+wordsTrainText = 0 # Объявляем переменную для подсчета слов в обучающих текстах
+
+for i in range(n_classes): # Проходим по всем классам
+    print(class_name[i], " "*(10-len(class_name[i])), len(train_text[i]), "символов, ", len(train_word_indexes[i]), "слов")
+    symbolsTrainText += len(train_text[i]) # Считаем символы
+    wordsTrainText += len(train_word_indexes[i]) # Считаем слова 
+
+print('----')
+print("В сумме ", symbolsTrainText, " символов, ", wordsTrainText, " слов \n")
+print()
+print("Статистика по тестовым текстам:")
+
+symbolsTestText = 0 # Объявляем переменную для подсчета символов в тестовых текстах
+wordsTestText = 0 # Объявляем переменную для подсчета слов в тестовых текстах
+
+for i in range(n_classes): #Проходим по всем классам
+    print(class_name[i], ' '*(10-len(class_name[i])), len(test_text[i]), "символов, ", len(test_word_indexes[i]), "слов")
+    symbolsTestText += len(test_text[i]) #Считаем символы
+    wordsTestText += len(test_word_indexes[i]) #Считаем слова 
+print('----')
+print("В сумме ", symbolsTestText, " символов, ", wordsTestText, " слов")

@@ -1,0 +1,343 @@
+import os
+import time
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+from tensorflow.keras import utils #Для работы с катеориальными данными
+from tensorflow.keras.models import Sequential #Полносвязная модель
+from tensorflow.keras.layers import BatchNormalization, Dense, Dropout, Flatten, Activation, Embedding, SpatialDropout1D #Слои
+from tensorflow.keras.preprocessing.text import Tokenizer #Методы для роботы с текстами и преобразования их в последовательности
+from tensorflow.keras.preprocessing.sequence import pad_sequences #Метод для работы с последовательностями
+
+from sklearn.preprocessing import LabelEncoder #Метол кодирования данных
+from sklearn.model_selection import train_test_split #Разделение на выборки
+
+
+def read_text(file_name): # Фунция для чтения данных
+    f = open(file_name, 'r', encoding='utf_8_sig')  # Открытие нужного файла
+    text = f.read() # Чтение файла.
+    text = text.replace('\n', ' ') # Замена переноса строки на пробле
+    return text # Возвращаем текст
+
+class_name = ['О. Генри', 'Стругацкие', 'Булгаков', 'Саймак', 'Фрай', 'Брэдберри'] # Все классы
+n_classes = len(class_name) # Количество класов
+
+
+path = 'Базы/тексты писателей/'
+
+# Загрузка обучающих тестов
+train_text = []
+test_text = []
+# Формирование необходимо произвести следующим образом
+# Класс каждого i-ого элемента в обучающей выборке должен соответствовать
+# Классу каждого i-ого элемента в тестовой выборке
+
+for i in class_name: # Проходимся по каждому классу
+    for j in os.listdir(path): # Проходимся по каждому файлу в папке с текстами
+        if i in j: # Проверяем, содержит ли файл j в названии имя класса i
+            if 'Обучающая' in j: # Если в имени найденного класса есть строка "Обучающая"
+                train_text.append(read_text(path + j)) # Добавляем в обучающую выборку
+                print(f'{j} добавлена в обучающую выборку') # Вывод информации
+            if 'Тестовая' in j: # Если в имени найденного класса есть строка "Тестовая"
+                test_text.append(read_text(path + j)) # Добавляем в тестовую выборку
+                print(f'{j} добавлена в тестовуб выборку') # Вывод информации
+            print()
+            
+            
+print(len(test_text))
+print(len(train_text[0]))
+
+########################################
+# Обработка данных. Преобразование текстовых данных в числовые и векторные для обчения нейросети
+########################################
+
+curr_time = time.time() # Засекаем текущее время
+max_words_count = 20000 # Определяем максимальное количество слов/индексов, учитываемое при обучении текстов
+
+# Использование встроенной в Keras функции Tokenizers для разбиения текста и превращения в матрицу числовых значений
+tokenizer = Tokenizer(
+    num_words = max_words_count, # Определяем максимальное количество слов/индексов, учитываемое при обучении текстов
+    filters = '!"#$%&()*+,-–—./…:;<=>?@[\\]^_`{|}~«»\t\n\xa0\ufeff', # Избавляемся от ненужных символов
+    lower = True, # Приведение всех слов к нижнему регистру
+    split = ' ', # Разделение слов по пробелу
+    oov_token = 'unknown', # Чтобы показать, где находится пропущенное слово
+    char_level = False # Не удалять однобуквенные слова
+)
+
+tokenizer.fit_on_texts(train_text) # Даем тексты в метод, который соберет словарь частотности
+items = list(tokenizer.word_index.items()) # Вытаскиваем индексы слов для просмотра
+print(f'Время обработки: {round(time.time() - curr_time)}')
+
+
+print(items[-10:]) # 50 Самый часто встречающихся слов
+print(f'Размер словаря: {len(items)}') # Длина словоря
+
+w_i = 'колобок' #input('Введите слово - ')
+print(f'Это слово имеет индекс - {tokenizer.word_index[w_i]}')
+
+
+# Преобразование текста в последовательность индексов согластно частотному словарю
+train_word_indexes = tokenizer.texts_to_sequences(train_text)
+test_word_indexes = tokenizer.texts_to_sequences(test_text)
+print('Взглянем на фрагменты обучающего текста')
+print(f'В виде оригинального текста: {train_text[1][:87]}')
+print(f'Он же в виде последовательности индексов" {train_word_indexes[1][:20]} \n')
+
+
+
+print("Статистика по обучающим текстам:")
+
+symbolsTrainText = 0 # Объявляем переменную для подсчета символов в обучающих текстах
+wordsTrainText = 0 # Объявляем переменную для подсчета слов в обучающих текстах
+
+for i in range(n_classes): # Проходим по всем классам
+    print(class_name[i], " "*(10-len(class_name[i])), len(train_text[i]), "символов, ", len(train_word_indexes[i]), "слов")
+    symbolsTrainText += len(train_text[i]) # Считаем символы
+    wordsTrainText += len(train_word_indexes[i]) # Считаем слова 
+
+print('----')
+print("В сумме ", symbolsTrainText, " символов, ", wordsTrainText, " слов \n")
+print()
+print("Статистика по тестовым текстам:")
+
+symbolsTestText = 0 # Объявляем переменную для подсчета символов в тестовых текстах
+wordsTestText = 0 # Объявляем переменную для подсчета слов в тестовых текстах
+
+for i in range(n_classes): #Проходим по всем классам
+    print(class_name[i], ' '*(10-len(class_name[i])), len(test_text[i]), "символов, ", len(test_word_indexes[i]), "слов")
+    symbolsTestText += len(test_text[i]) #Считаем символы
+    wordsTestText += len(test_word_indexes[i]) #Считаем слова 
+print('----')
+print("В сумме ", symbolsTestText, " символов, ", wordsTestText, " слов")
+
+
+
+
+########################################
+# Создание обучающей и проверочной выборки
+# Функции для формирования выборки по отрезкам текста с заданным шагом
+########################################
+
+# Формирование обучающей и тестовой выборки по листу индексов слов
+# Разделение на короткие векторы
+def get_set_from_index(word_indexes, x_len, step): # Функция принимает последовательности индексов, размер окна, шаг окна
+    x_sample = [] # Обьявление списка для векторов
+    words_len = len(word_indexes) # Считаем количество слов
+    index = 0 # Начальный индекс
+    
+    while (index + x_len <= words_len): # Идем по всей длинге вектора индексов
+        x_sample.append(word_indexes[index:index+x_len]) # Откусываем вектор длинны x_len
+        index += step # Смещение вперед на step\
+    return x_sample
+
+# Формирование обучающей и проверочной выборки
+# Из 2х листов индексов от двух классво
+def create_set_multiclasses(word_indexes, x_len, step): # Функция принимает последовательность индексов, размер окна, шаг окна
+    # Для каждого из 6ти классов 
+    # Создаем обучающую/тестовую выборку из индексов
+    n_classes = len(word_indexes) # Задаем количество классов выборки
+    classes_x_samples = [] # Здесь будет список размером "колво классов * колво окон в тексте * длину окна (например 6 по 1341*1000)"
+    for wI in word_indexes: # Для каждого текста выборки из последовательности индексов
+        classes_x_samples.append(get_set_from_index(wI, x_len, step)) # Добавление в список текст индексов, разбитый на колво окон * длину окна
+            
+    # Формируем один общий xSamples
+    x_samples = [] # Здесь будет список размером "суммарное кол-во окон во всех текстах*длину окна (например, 15779*1000)"
+    y_samples = [] # Здесь будет список размером "суммарное кол-во окон во всех текстах*вектор длиной 6"
+    
+    for t in range(n_classes): # В диапозоне количества классов (6)
+        xT = classes_x_samples[t] # Берем текст вида "колво окон в тексте * длину окна (например 6 по 1341*1000)"
+        for i in range(len(xT)): # И каждое его окно
+            x_samples.append(xT[i]) # Добавляем в общий список выборки
+            y_samples.append(utils.to_categorical(t, n_classes)) # Добавляем соответствующий вектро класса
+            
+    x_samples = np.array(x_samples) # Перевод в массив numpy для подачи в нейронку
+    y_samples = np.array(y_samples) # Перевод в массив numpy для подачи в нейронку
+    return (x_samples, y_samples)
+
+x_len = 1000
+step = 100
+
+X_train, y_train = create_set_multiclasses(train_word_indexes, x_len, step)
+X_test, y_test = create_set_multiclasses(test_word_indexes, x_len, step)
+
+
+# Преобразовываем полученные выборки из последовательностей в матрицы нулей и едениц по принципу bag_of_words
+# Для успешной работы метода, его нужно передать в виде списка
+X_train01 = tokenizer.sequences_to_matrix(X_train.tolist())
+X_test01 = tokenizer.sequences_to_matrix(X_test.tolist())
+# Размероность итоговой выборки 
+print(X_train01.shape)
+print(X_train01[0, 100:])
+
+
+
+########################################
+# Создание нейросети
+########################################
+
+model = Sequential()
+
+model.add(BatchNormalization(input_dim = max_words_count))
+model.add(Dense(256, activation = 'relu'))
+model.add(Dropout(0.25))
+
+model.add(BatchNormalization())
+model.add(Dense(512, activation = 'relu'))
+model.add(Dropout(0.25))
+
+model.add(BatchNormalization())
+model.add(Dense(256, activation = 'relu'))
+model.add(Dropout(0.25))
+
+model.add(BatchNormalization())
+model.add(Dense(6, activation = 'softmax'))
+
+model.compile(loss = 'categorical_crossentropy', optimizer = 'adam', metrics = ['accuracy'])
+
+history = model.fit(X_train01,
+          y_train,
+          batch_size = 128,
+          epochs = 15,
+          validation_data = (X_test01, y_test),
+          verbose = 1
+         )
+
+plt.plot(history.history['accuracy'], label = 'Качетсво на тренировочном наборе')
+plt.plot(history.history['val_accuracy'], label = 'Качетсво на тестовом наборе')
+plt.xlabel('Количесво эпох')
+plt.ylabel('Качество обучения')
+plt.show()
+
+
+########################################
+# Проверка предсказания
+########################################
+
+# Представляем тестовую выборку в удобных для распознавания размерах
+def createTestMultiClasses(wordIndexes, x_len, step): #функция принимает последовательность индексов, размер окна, шаг окна
+
+    #Для каждого из 6 классов
+    #Создаём тестовую выборку из индексов
+    n_classes = len(wordIndexes) #Задаем количество классов
+    xTest6Classes01 = []               #Здесь будет список из всех классов, каждый размером "кол-во окон в тексте * 20000 (при maxWordsCount=20000)"
+    xTest6Classes = []                 #Здесь будет список массивов, каждый размером "кол-во окон в тексте * длину окна"(6 по 420*1000)
+    for wI in wordIndexes:                       #Для каждого тестового текста из последовательности индексов
+        sample = (get_set_from_index(wI, x_len, step)) #Тестовая выборка размером "кол-во окон*длину окна"(например, 420*1000)
+        xTest6Classes.append(sample)              # Добавляем в список
+        xTest6Classes01.append(tokenizer.sequences_to_matrix(sample)) #Трансформируется в Bag of Words в виде "кол-во окон в тексте * 20000"
+    xTest6Classes01 = np.array(xTest6Classes01)                     #И добавляется к нашему списку, 
+    xTest6Classes = np.array(xTest6Classes)                     #И добавляется к нашему списку, 
+  
+    return xTest6Classes01, xTest6Classes  #функция вернёт тестовые данные: TestBag 6 классов на n*20000 и xTestEm 6 по n*1000
+
+# Распознаём тестовую выборку и выводим результаты
+def recognizeMultiClass(model, xTest, modelName):
+    print("НЕЙРОНКА: ", modelName)
+    print()
+  
+    totalSumRec = 0 # Сумма всех правильных ответов
+  
+    #Проходим по всем классам
+    for i in range(n_classes):
+        #Получаем результаты распознавания класса по блокам слов длины xLen
+        currPred = model.predict(xTest[i])
+        #Определяем номер распознанного класса для каждохо блока слов длины xLen
+        currOut = np.argmax(currPred, axis=1)
+
+        evVal = []
+        for j in range(n_classes):
+            evVal.append(len(currOut[currOut==j])/len(xTest[i]))
+
+        totalSumRec += len(currOut[currOut==i])
+        recognizedClass = np.argmax(evVal) #Определяем, какой класс в итоге за какой был распознан
+
+        #Выводим результаты распознавания по текущему классу
+        isRecognized = "Это НЕПРАВИЛЬНЫЙ ответ!"
+        if (recognizedClass == i):
+            isRecognized = "Это ПРАВИЛЬНЫЙ ответ!"
+        str1 = 'Класс: ' + class_name[i] + " " * (11 - len(class_name[i])) + str(int(100*evVal[i])) + "% сеть отнесла к классу " + class_name[recognizedClass]
+        print(str1, " " * (55-len(str1)), isRecognized, sep='')
+  
+    #Выводим средний процент распознавания по всем классам вместе
+    print()
+    sumCount = 0
+    for i in range(n_classes):
+        sumCount += len(xTest[i])
+    print("Средний процент распознавания ", int(100*totalSumRec/sumCount), "%", sep='')
+
+    print()
+  
+    return totalSumRec/sumCount
+
+
+xTest6Classes01, x2 = createTestMultiClasses(test_word_indexes, x_len, step) #Преобразование тестовой выборки
+
+
+l = np.array(xTest6Classes01)
+np.save('Базы/тексты писателей/xTestPredictBoW', l)
+np.save('Базы/тексты писателей/xTestPredictEmbedding', x2)
+
+#Проверяем точность нейронки обученной на bag of words
+pred = recognizeMultiClass(model, xTest6Classes01, "Тексты 01 + Dense")
+
+
+'''
+Подается набор токенов, каждому токену проставщяется набор векторов (матрица из веторов)
+Обычный Dropout [
+он-----[..X......],
+пошел--[.....X...],
+гулять-[..X......],
+рано---[.........],
+утроим-[.......X.],
+]
+SpatialDropout1D
+[
+он-----[X........],
+пошел--[X........],
+гулять-[X........],
+рано---[X........],
+утроим-[X........],
+]
+'''
+
+
+model = Sequential()
+# Слой, который ставит соответствие слову, его вектор (обучается в составе нейросети)
+# Embedding(размер словоря, размер пространства, входная длинна)
+model.add(Embedding(max_words_count, 20, input_length=x_len))
+# Гасит не рандомные части 
+model.add(SpatialDropout1D(0.2))
+# Выпремление матрицы в один вектор
+model.add(Flatten())
+model.add(BatchNormalization())
+model.add(Dense(256, activation = 'relu'))
+model.add(Dropout(0.2))
+model.add(BatchNormalization())
+model.add(Dense(6, activation = 'softmax'))
+
+model.compile(loss = 'categorical_crossentropy', optimizer = 'adam', metrics = ['accuracy'])
+
+model.summary()
+
+
+history = model.fit(X_train,
+                    y_train,
+                    epochs = 10,
+                    batch_size = 128,
+                    validation_data = (X_test, y_test)
+                   )
+
+plt.plot(history.history['accuracy'], label = 'Качетсво на тренировочном наборе')
+plt.plot(history.history['val_accuracy'], label = 'Качетсво на тестовом наборе')
+plt.xlabel('Количесво эпох')
+plt.ylabel('Качество обучения')
+plt.show()
+
+model.save_weights('model.h5')
+model.load_weights('model.h5')
+
+# Проверка результатов
+#Проверяем точность нейронки обученной на bag of words
+_, xTest6Classes = createTestMultiClasses(test_word_indexes, x_len, step) # Преобразование текстовой выборки
+pred = recognizeMultiClass(model, xTest6Classes, "Embedding + Dense")
