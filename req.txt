@@ -14,3 +14,4 @@ python -c "import tensorflow as tf; print(tf.config.list_physical_devices('GPU')
 pip install pydot & graphviz & pydotplus
 conda install pydot==1.4.2
 conda install pydotplus
+https://stackoverflow.com/questions/47188756/keras-plot-model-tells-me-to-install-pydot
