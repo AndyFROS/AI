@@ -12,3 +12,4 @@ python -m pip install "tensorflow<2.11"
 # Verify install:
 python -c "import tensorflow as tf; print(tf.config.list_physical_devices('GPU'))"
 conda install pydot==1.4.2
+conda install pydotplus
